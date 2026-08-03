@@ -75,7 +75,7 @@ class GeminiProvider(VisionProvider):
                 ],  # type: ignore[arg-type]
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=EXTRACTION_JSON_SCHEMA,
+                    response_schema=ExtractedReceipt,
                     temperature=0.1,
                 ),
             )

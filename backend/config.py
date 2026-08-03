@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     gemini_api_key: str = Field(default="")
     gemini_vision_model: str = Field(default="gemini-2.5-flash")
 
+    openrouter_api_key: str = ""
+    openrouter_model: str = "qwen/qwen2-vl-7b-instruct:free"
+
     # --- Embedding provider (semantic search) ---
     # API-based by default: no local ML model is loaded, so the backend stays
     # a thin, fast container with no torch/sentence-transformers dependency.

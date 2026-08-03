@@ -24,21 +24,37 @@ def _build(provider: str, api_key: str, model: str, timeout_seconds: int, max_re
     # if provider == "groq": from backend.providers.groq_provider import GroqProvider; ...
     # if provider == "openrouter": ...
     # if provider == "glm": ...
+    if provider == "openrouter":
+        from backend.providers.openrouter_provider import OpenRouterProvider
+
+        return OpenRouterProvider(
+            api_key=api_key,
+            model=model,
+            timeout_seconds=timeout_seconds,
+            max_retries=max_retries,
+        )
 
     raise VisionProviderError(f"Unknown VISION_PROVIDER: {provider!r}")
 
 
 def get_vision_provider(settings: Settings) -> VisionProvider:
-    """Return a cached provider instance built from primitive settings values.
-
-    Cache key is primitive fields (not the Settings object, which isn't
-    hashable) so repeated calls reuse one client per config.
-    """
     provider = settings.vision_provider.lower()
+
+    if provider == "gemini":
+        api_key = settings.gemini_api_key
+        model = settings.gemini_vision_model
+
+    elif provider == "openrouter":
+        api_key = settings.openrouter_api_key
+        model = settings.openrouter_model
+
+    else:
+        raise VisionProviderError(f"Unknown VISION_PROVIDER: {provider!r}")
+
     return _build(
         provider,
-        settings.gemini_api_key,
-        settings.gemini_vision_model,
+        api_key,
+        model,
         settings.extraction_timeout_seconds,
         settings.extraction_max_retries,
     )
