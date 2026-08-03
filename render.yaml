@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: receiptmind-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: VISION_PROVIDER
+        value: gemini
+      - key: EMBEDDING_PROVIDER
+        value: gemini
+      - key: CORS_ORIGINS
+        value: https://your-app.vercel.app
+      - key: DATABASE_URL
+        value: sqlite:////data/receiptmind.db
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: ENVIRONMENT
+        value: production
+    disk:
+      name: receiptmind-data
+      mountPath: /data
+      sizeGB: 1

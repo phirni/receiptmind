@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Data (sqlite db, uploaded images, logs)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Env files
+.env
+.env.local
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/

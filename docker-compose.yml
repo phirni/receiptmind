@@ -1,0 +1,33 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      VISION_PROVIDER: gemini
+      EMBEDDING_PROVIDER: gemini
+      CORS_ORIGINS: http://localhost:5173,http://localhost:4173
+      DATABASE_URL: sqlite:////data/receiptmind.db
+      UPLOAD_DIR: /data/uploads
+      ENVIRONMENT: development
+    volumes:
+      - receiptmind_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "4173:4173"
+    depends_on:
+      - backend
+
+volumes:
+  receiptmind_data:

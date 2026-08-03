@@ -1,0 +1,35 @@
+{
+  "merchant_name": "Blue Bottle Coffee",
+  "merchant_address": "300 Webster St, Oakland, CA",
+  "receipt_number": "BB-20487",
+  "currency": "USD",
+  "subtotal": 14.50,
+  "tax": 1.31,
+  "total": 15.81,
+  "payment_method": "Visa •••• 4471",
+  "purchase_datetime": "2026-06-14T08:22:00",
+  "line_items": [
+    {
+      "name": "Oat Milk Latte",
+      "quantity": 1,
+      "unit_price": 5.75,
+      "total_price": 5.75,
+      "category": "beverages"
+    },
+    {
+      "name": "Cold Brew, Large",
+      "quantity": 1,
+      "unit_price": 4.75,
+      "total_price": 4.75,
+      "category": "beverages"
+    },
+    {
+      "name": "Almond Croissant",
+      "quantity": 1,
+      "unit_price": 4.00,
+      "total_price": 4.00,
+      "category": "snacks"
+    }
+  ],
+  "confidence": 0.94
+}

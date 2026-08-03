@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: #0d1614;
+  }
+  body {
+    background-image: radial-gradient(circle at 1px 1px, rgba(237, 234, 224, 0.035) 1px, transparent 0);
+    background-size: 18px 18px;
+    min-height: 100vh;
+  }
+  ::selection {
+    background-color: #e3a73c;
+    color: #0d1614;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a3b36 #141f1c;
+  }
+}
+
+@layer components {
+  /* The signature element: a "thermal receipt" card with a perforated /
+     torn bottom edge, used for receipt list rows and the receipt detail
+     panel. The zigzag is a repeating conic-gradient mask so it's crisp at
+     any width without needing an SVG asset. */
+  .receipt-edge {
+    position: relative;
+  }
+  .receipt-edge::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -9px;
+    height: 9px;
+    background-color: inherit;
+    -webkit-mask-image: conic-gradient(
+      from 45deg at 8px 0,
+      #000 90deg,
+      transparent 0
+    );
+    mask-image: conic-gradient(from 45deg at 8px 0, #000 90deg, transparent 0);
+    -webkit-mask-size: 16px 9px;
+    mask-size: 16px 9px;
+    -webkit-mask-repeat: repeat-x;
+    mask-repeat: repeat-x;
+  }
+
+  .stat-figure {
+    font-family: "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-ink;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
