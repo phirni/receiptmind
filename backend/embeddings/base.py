@@ -2,7 +2,7 @@
 
 No local ML model is loaded anywhere in this app; embeddings are produced by
 calling a hosted API. This keeps the backend container small and fast to
-cold-start on Railway/Render, at the cost of a network round-trip per batch.
+cold-start on Render, at the cost of a network round-trip per batch.
 """
 
 from __future__ import annotations

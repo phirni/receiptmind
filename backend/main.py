@@ -8,14 +8,15 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.api.routes import receipts, search, stats, upload
 from backend.config import get_settings
 from backend.database.init_db import init_db
+from backend.services.image_storage import signed_receipt_image_url
 from backend.utils.exceptions import ReceiptMindError
 from backend.utils.logging_config import configure_logging
 
@@ -67,8 +68,21 @@ def health() -> dict:
     return {"status": "ok", "app": settings.app_name, "environment": settings.environment}
 
 
-# Serve uploaded receipt images (used by the frontend's receipt image viewer).
-import os  # noqa: E402
+# Keep local images private behind the API route in production; local development
+# retains the simple static-file mount.
+if settings.supabase_storage_enabled:
 
-os.makedirs(settings.upload_dir, exist_ok=True)
-app.mount("/images", StaticFiles(directory=settings.upload_dir), name="images")
+    @app.get("/images/{image_key}", tags=["images"])
+    def get_receipt_image(image_key: str) -> RedirectResponse:
+        try:
+            url = signed_receipt_image_url(image_key, settings)
+        except RuntimeError as exc:
+            logger.exception("Unable to create receipt image URL")
+            raise HTTPException(status_code=502, detail="Receipt image storage is unavailable") from exc
+        return RedirectResponse(url)
+
+else:
+    import os  # noqa: E402
+
+    os.makedirs(settings.upload_dir, exist_ok=True)
+    app.mount("/images", StaticFiles(directory=settings.upload_dir), name="images")

@@ -6,8 +6,8 @@ Pipeline: normalize -> hash/dedup -> vision extraction -> validation
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,6 +16,7 @@ from backend.config import Settings
 from backend.models.receipt import LineItem, Merchant, Receipt
 from backend.providers.base import VisionProvider, VisionProviderError
 from backend.schemas.extraction import ExtractedReceipt
+from backend.services.image_storage import save_receipt_image
 from backend.utils.exceptions import DuplicateReceiptError, ExtractionFailedError
 from backend.utils.image_utils import normalize_to_png, sha256_hash
 
@@ -41,7 +42,7 @@ class ExtractionService:
         if existing is not None:
             raise DuplicateReceiptError(f"This receipt was already uploaded (id={existing.id}).")
 
-        image_path = self._save_image(png_bytes, image_hash)
+        image_path = await asyncio.to_thread(save_receipt_image, png_bytes, image_hash, self._settings)
 
         try:
             extracted = await self._provider.extract_receipt(png_bytes, "image/png")
@@ -51,14 +52,6 @@ class ExtractionService:
 
         receipt = self._persist_receipt(extracted, image_path, image_hash)
         return receipt
-
-    def _save_image(self, png_bytes: bytes, image_hash: str) -> str:
-        upload_dir = Path(self._settings.upload_dir)
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        path = upload_dir / f"{image_hash}.png"
-        if not path.exists():
-            path.write_bytes(png_bytes)
-        return str(path)
 
     def _persist_failed(self, image_path: str, image_hash: str, error_message: str) -> Receipt:
         receipt = Receipt(

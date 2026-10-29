@@ -8,19 +8,19 @@ services:
     envVars:
       - key: GEMINI_API_KEY
         sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: receipts
       - key: VISION_PROVIDER
         value: gemini
       - key: EMBEDDING_PROVIDER
         value: gemini
       - key: CORS_ORIGINS
-        value: https://your-app.vercel.app
-      - key: DATABASE_URL
-        value: sqlite:////data/receiptmind.db
-      - key: UPLOAD_DIR
-        value: /data/uploads
+        sync: false
       - key: ENVIRONMENT
         value: production
-    disk:
-      name: receiptmind-data
-      mountPath: /data
-      sizeGB: 1

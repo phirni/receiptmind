@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/+$/, "");
 
 export class ApiError extends Error {
   constructor(message, status, errorCode) {
@@ -76,9 +76,8 @@ export const api = {
   getStats: () => request("/stats"),
 
   imageUrl: (path) => {
-    // Backend serves uploaded images at /images/<hash>.png; path stored is
-    // an absolute filesystem path, so we just take the filename.
-    const filename = path?.split("/").pop();
-    return filename ? `${BASE_URL}/images/${filename}` : null;
+    // Local SQLite stores an absolute path; Supabase stores just the object key.
+    const filename = path?.replaceAll("\\", "/").split("/").pop();
+    return filename ? `${BASE_URL}/images/${encodeURIComponent(filename)}` : null;
   },
 };

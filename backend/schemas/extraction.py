@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 class ExtractedLineItem(BaseModel):
     name: str = Field(min_length=1, max_length=500)
     
-    quantity: float = Field(default=1.0)
+    quantity: float = Field(default=1.0, gt=0)
     unit_price: float | None = Field(default=None, ge=0)
     total_price: float = Field(ge=0)
     category: str | None = Field(default=None, max_length=100)

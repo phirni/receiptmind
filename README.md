@@ -3,7 +3,7 @@
 AI receipt OCR + semantic search over your purchase history.
 
 Upload photos or PDFs of receipts. A multimodal model reads each one, extracts
-merchant/line-item/total data, validates it, and stores it in SQLite. Every
+merchant/line-item/total data, validates it, and stores it in a database. Every
 line item is embedded so you can search by meaning — "coffee" also finds
 lattes, espresso, and cold brew — not just exact keywords.
 
@@ -38,9 +38,9 @@ flowchart LR
     end
 
     subgraph Storage
-        DB[("SQLite\nreceipts / line_items / merchants")]
-        VEC[("sqlite-vec\nvec_line_items")]
-        IMG[("Uploaded images\n/data/uploads")]
+        DB[("SQLite locally / Supabase Postgres\nreceipts / line_items / merchants")]
+        VEC[("sqlite-vec locally / pgvector in Supabase")]
+        IMG[("Local uploads / Supabase Storage")]
     end
 
     FE -->|multipart upload| UP --> EXT
@@ -65,15 +65,14 @@ flowchart LR
 
 - **No local ML model.** Both receipt reading (vision) and embeddings are
   hosted API calls (Gemini). The backend has no `torch` / `sentence-transformers`
-  dependency, so the container is small and starts fast on Railway/Render's
-  free tiers.
+  dependency, so the container is small and starts fast on Render's free tier.
 - **Provider abstraction.** `VisionProvider` and `EmbeddingProvider` are
   abstract base classes; swapping providers means adding one class in
   `providers/` or `embeddings/` and one line in `config.py`. The rest of the
   app never imports a concrete provider.
-- **sqlite-vec, not a separate vector DB.** Embeddings live in a `vec0`
-  virtual table inside the same SQLite file as everything else — one
-  database file to back up, no extra service to run.
+- **One codebase for local and hosted storage.** Local development uses SQLite
+  and sqlite-vec. Production uses Supabase Postgres with pgvector and a private
+  Supabase Storage bucket for receipt images.
 - **Hybrid search via Reciprocal Rank Fusion.** Semantic (cosine similarity
   over embeddings) and keyword (SQL `ILIKE`) results are combined by rank,
   not raw score, since the two scores aren't on comparable scales.
@@ -91,7 +90,7 @@ receiptmind/
 │   ├── services/               # extraction, embedding, receipt, search, stats
 │   ├── providers/              # VisionProvider ABC + GeminiProvider
 │   ├── embeddings/              # EmbeddingProvider ABC + GeminiEmbeddingProvider
-│   ├── search/                  # sqlite-vec store, keyword search, RRF hybrid
+│   ├── search/                  # sqlite-vec / pgvector, keyword search, RRF hybrid
 │   ├── database/                # SQLAlchemy engine/session, init_db
 │   ├── models/                  # Merchant, Receipt, LineItem ORM models
 │   ├── schemas/                 # Pydantic: LLM extraction schema + API I/O
@@ -131,7 +130,7 @@ cp .env.example .env
 # edit .env and set GEMINI_API_KEY=...
 
 pip install -e ".[dev]"          # or: uv sync
-alembic upgrade head              # creates the schema + sqlite-vec index
+alembic upgrade head              # creates the schema + local sqlite-vec index
 python scripts/seed_sample_data.py  # optional: adds 5 demo receipts, no API calls
 
 uvicorn backend.main:app --reload   # or: uv run uvicorn backend.main:app --reload
@@ -175,8 +174,11 @@ The important ones:
 | `GEMINI_API_KEY` | Free key from AI Studio; used for both extraction and embeddings |
 | `VISION_PROVIDER` | `gemini` today; add a new value + provider class to switch |
 | `EMBEDDING_PROVIDER` | Same pattern, for embeddings |
-| `DATABASE_URL` | `sqlite:///./data/receiptmind.db` locally; point at a mounted volume in production |
+| `DATABASE_URL` | `sqlite:///./data/receiptmind.db` locally; use Supabase's Postgres URL in production |
 | `CORS_ORIGINS` | Comma-separated list; add your deployed frontend URL |
+| `SUPABASE_URL` | Supabase project URL for receipt image storage |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only Supabase key; never put it in Vercel |
+| `SUPABASE_STORAGE_BUCKET` | Private Storage bucket name (default `receipts`) |
 
 ---
 
@@ -194,34 +196,35 @@ uploaded images.
 
 ## Deployment
 
-**Backend — Railway or Render**
+**Backend — Render free**
 
-Both platforms build directly from the root `Dockerfile`.
+Render builds the root `Dockerfile`. The free service sleeps after inactivity,
+so its first request may take about a minute. Receipt data and images live in
+Supabase and persist across Render restarts.
 
 1. Push this repo to GitHub.
-2. Railway: `railway.json` is already configured — just connect the repo and
-   set `GEMINI_API_KEY` in the dashboard. Add a persistent volume mounted at
-   `/data` (Railway → Settings → Volumes) so the SQLite file and uploaded
-   images survive redeploys.
-3. Render: `render.yaml` already declares a 1GB disk mounted at `/data` — set
-   `GEMINI_API_KEY` in the dashboard (marked `sync: false` so it's not
-   committed).
-4. Either way, set `CORS_ORIGINS` to your deployed frontend's URL once you
-   have it.
+2. Create a Supabase project and a **private** Storage bucket named `receipts`.
+   The backend enables the `vector` extension and creates application tables.
+3. Copy the Supabase Postgres connection string and project URL. For SQLAlchemy,
+   use the `postgresql+psycopg://` driver prefix.
+4. Create a Render web service from this repo. `render.yaml` defines the free
+   Docker service and environment variables. Set `DATABASE_URL`, `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, and `GEMINI_API_KEY` in Render. Keep the
+   service-role key only on the backend.
+5. Set `CORS_ORIGINS` to the Vercel production domain (and any preview domains
+   you need to use).
 
 **Frontend — Vercel**
 
-1. Import the `frontend/` directory as a Vercel project (`vercel.json` is
-   already configured for the Vite build).
+1. Import this repository as a Vercel project and set its Root Directory to
+   `frontend/` (`vercel.json` is configured for the Vite build).
 2. Set `VITE_API_BASE_URL` to your deployed backend URL (e.g.
-   `https://receiptmind-api.up.railway.app`) in Vercel's environment
+   Render backend URL) in Vercel's environment
    variables. Vite inlines this at build time, so redeploy after changing it.
 
-**A note on SQLite in production:** this setup runs one backend replica with
-a persistent disk — fine for a personal/portfolio deployment, but SQLite
-doesn't support multiple concurrent writers across replicas. If you need to
-scale horizontally, swap `DATABASE_URL` for Postgres and replace the
-sqlite-vec store with `pgvector` (see Future Improvements).
+Supabase Free has database and file-storage quotas and may pause inactive
+projects; check the current plan limits before relying on it for important
+records.
 
 ---
 
@@ -250,9 +253,20 @@ Statistics pages here once you've run it against real receipts)*
 
 ---
 
+## Quality benchmarks
+
+The offline evaluator compares saved predictions with human-verified receipt
+transcriptions and search relevance judgments. It reports field accuracy,
+amount error, line-item precision/recall/F1, Recall@K, MRR, nDCG@K, and simple
+qualitative bands. See [`benchmarks/README.md`](benchmarks/README.md) for the
+input format and run it with `python scripts/evaluate_quality.py results.json`.
+There are no claimed model-quality scores until a labeled evaluation set is
+collected.
+
+---
+
 ## Future improvements
 
-- Postgres + pgvector backend for multi-replica deployments
 - Duplicate detection across near-identical (not just byte-identical) images
 - CSV / Excel export of receipts and line items
 - Manual editing of extracted fields from the Receipt Detail page

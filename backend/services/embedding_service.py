@@ -1,4 +1,4 @@
-"""Keeps the sqlite-vec index in sync with line_items."""
+"""Keeps the configured vector index in sync with line_items."""
 
 from __future__ import annotations
 

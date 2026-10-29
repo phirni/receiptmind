@@ -20,9 +20,14 @@ class StatsService:
         total_spent = self._db.execute(select(func.coalesce(func.sum(processed.c.total), 0.0))).scalar_one()
         avg_value = round(total_spent / total_receipts, 2) if total_receipts else 0.0
 
+        month_expr = (
+            func.to_char(Receipt.purchase_datetime, "YYYY-MM")
+            if self._db.bind is not None and self._db.bind.dialect.name == "postgresql"
+            else func.strftime("%Y-%m", Receipt.purchase_datetime)
+        )
         monthly = self._db.execute(
             select(
-                func.strftime("%Y-%m", Receipt.purchase_datetime).label("month"),
+                month_expr.label("month"),
                 func.sum(Receipt.total).label("total"),
             )
             .where(Receipt.status == "processed", Receipt.purchase_datetime.is_not(None))

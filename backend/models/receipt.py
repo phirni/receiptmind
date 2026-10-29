@@ -99,7 +99,7 @@ class LineItem(Base):
     category: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
 
     # 0/1 flag (not a real Boolean column) marking whether this item still
-    # needs (re)embedding into the sqlite-vec index.
+    # needs (re)embedding into the configured vector index.
     is_embedded: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     receipt: Mapped[Receipt] = relationship(back_populates="line_items")

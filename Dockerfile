@@ -14,8 +14,8 @@ COPY backend ./backend
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -e .
 
-# Persist uploads + sqlite db in a volume mounted at /data in production
-# (see docker-compose.yml / Railway volume config).
+# Local/container defaults. Render production overrides DATABASE_URL and uses
+# Supabase Storage, so the free service does not depend on persistent disk.
 ENV DATABASE_URL=sqlite:////data/receiptmind.db \
     UPLOAD_DIR=/data/uploads \
     PORT=8000

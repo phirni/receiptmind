@@ -2,7 +2,7 @@
 
 All configuration is sourced from environment variables (see .env.example).
 Nothing in this module hardcodes secrets or environment-specific paths, so the
-same image can run locally, on Railway/Render, or anywhere else that supplies
+same image can run locally, on Render, or anywhere else that supplies
 env vars.
 """
 
@@ -11,7 +11,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -45,12 +45,14 @@ class Settings(BaseSettings):
     embedding_dimensions: int = Field(default=768)
 
     # --- Database ---
-    # SQLite file. On Railway/Render, point this at a mounted persistent
-    # volume, e.g. sqlite:////data/receiptmind.db
+    # SQLite locally; use Supabase's Postgres connection string in production.
     database_url: str = Field(default="sqlite:///./data/receiptmind.db")
 
-    # --- Storage ---
+    # --- Receipt image storage ---
     upload_dir: str = Field(default="./data/uploads")
+    supabase_url: str = Field(default="")
+    supabase_service_role_key: str = Field(default="")
+    supabase_storage_bucket: str = Field(default="receipts")
     max_upload_mb: int = Field(default=15)
 
     # --- Extraction ---
@@ -66,12 +68,27 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
+    @model_validator(mode="after")
+    def _validate_production_storage(self) -> Settings:
+        if bool(self.supabase_url.strip()) != bool(self.supabase_service_role_key.strip()):
+            raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set together")
+        if self.environment.lower() == "production" and not self.database_url.startswith("postgres"):
+            raise ValueError("Production requires a Supabase Postgres DATABASE_URL")
+        if self.database_url.startswith("postgres") and not self.supabase_storage_enabled:
+            raise ValueError("Postgres deployments require Supabase Storage configuration")
+        return self
+
     @property
     def sqlite_path(self) -> Path:
         """Filesystem path of the sqlite DB, derived from database_url."""
-        # database_url looks like sqlite:///./data/receiptmind.db
+        if not self.database_url.startswith("sqlite:"):
+            raise ValueError("sqlite_path is only available when DATABASE_URL uses SQLite")
         raw = self.database_url.split("sqlite:///", 1)[-1]
         return Path(raw)
+
+    @property
+    def supabase_storage_enabled(self) -> bool:
+        return bool(self.supabase_url.strip() and self.supabase_service_role_key.strip())
 
     @property
     def is_production(self) -> bool:

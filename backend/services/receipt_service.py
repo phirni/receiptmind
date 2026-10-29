@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import datetime as dt
 import math
-from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
+from backend.config import get_settings
 from backend.models.receipt import LineItem, Receipt
 from backend.schemas.api import PaginatedReceipts, ReceiptListItem
 from backend.search.vector_store import delete_embedding
+from backend.services.image_storage import delete_receipt_image
 from backend.utils.exceptions import ReceiptNotFoundError
 
 
@@ -95,8 +96,7 @@ class ReceiptService:
         receipt = self.get(receipt_id)
         for item in receipt.line_items:
             delete_embedding(self._db, item.id)
-        image_path = Path(receipt.image_path)
+        image_path = receipt.image_path
         self._db.delete(receipt)
         self._db.commit()
-        if image_path.exists():
-            image_path.unlink(missing_ok=True)
+        delete_receipt_image(image_path, get_settings())
