@@ -56,7 +56,6 @@ class OpenRouterProvider(VisionProvider):
     ) -> None:
         if not api_key:
             raise VisionProviderError("OPENROUTER_API_KEY is not configured.")
-        print("API KEY:", repr(api_key[:15]), "length:", len(api_key))
         self._client = OpenAI(
             api_key=api_key,
             base_url="https://openrouter.ai/api/v1",

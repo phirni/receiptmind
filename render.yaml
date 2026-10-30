@@ -8,6 +8,10 @@ services:
     envVars:
       - key: GEMINI_API_KEY
         sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openrouter/free
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL
